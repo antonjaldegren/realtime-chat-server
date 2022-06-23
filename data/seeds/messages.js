@@ -3,8 +3,10 @@
  * @returns { Promise<void> }
  */
 exports.seed = async function (knex) {
-	await knex("messages").del();
-	await knex("messages").insert([
+	const table = "messages";
+
+	await knex(table).del();
+	await knex(table).insert([
 		{
 			message: "Hej på dig!",
 			author_id: "123abc",

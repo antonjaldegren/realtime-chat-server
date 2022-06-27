@@ -5,8 +5,8 @@
 	"main": "index.js",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
-		"migrate": "knex migrate:latest --knexfile data/knexfile.js",
-		"seed": "knex seed:run --knexfile data/knexfile.js"
+		"migrate": "knex migrate:latest --knexfile ./data/knexfile.js",
+		"seed": "knex seed:run --knexfile ./data/knexfile.js"
 	},
 	"keywords": [],
 	"author": "",

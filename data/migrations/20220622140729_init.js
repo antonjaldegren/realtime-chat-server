@@ -2,8 +2,8 @@
  * @param { import("knex").Knex } knex
  * @returns { Promise<void> }
  */
-exports.up = function (knex) {
-	return knex.schema.createTable("messages", (table) => {
+exports.up = async function (knex) {
+	await knex.schema.createTable("messages", (table) => {
 		table.increments("id").primary();
 		table.string("message").notNullable();
 		table.string("author_id").notNullable();
@@ -15,6 +15,10 @@ exports.up = function (knex) {
 			.inTable("rooms")
 			.onDelete("CASCADE");
 		table.timestamps(true, true);
+	});
+
+	await knex.schema.createTable("rooms", (table) => {
+		table.string("id").notNullable().primary();
 	});
 };
 

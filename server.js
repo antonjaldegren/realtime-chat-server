@@ -1,23 +1,7 @@
 const { Server } = require("socket.io");
-const { v4: uuidv4 } = require("uuid");
+const fs = require("fs");
 const messagesModel = require("./models/messages.model");
 const roomsModel = require("./models/rooms.model");
-
-async function getAllMessages() {
-	const result = await messagesModel.getAll();
-	// console.log("getAllMessages: ", result);
-}
-
-async function getMessagesByRoomId() {
-	const result = await messagesModel.getByRoomId("Någons room");
-	// console.log("getMessagesByRoomId: ", result);
-}
-
-getAllMessages();
-getMessagesByRoomId();
-
-let messages = [];
-let rooms = [];
 
 const io = new Server({
 	cors: {
@@ -26,107 +10,97 @@ const io = new Server({
 	},
 });
 
-function getSockets() {
-	return Object.fromEntries(io.sockets.sockets);
-}
+const log = fs.createWriteStream("messages.log", { flags: "a" });
 
-function getFilteredSockets() {
-	const sockets = getSockets();
+function getUsers() {
+	const sockets = Object.fromEntries(io.sockets.sockets);
+	const rooms = Object.fromEntries(io.of("/").adapter.sids);
+
 	return Object.keys(sockets).map((key) => ({
 		id: sockets[key].id,
 		username: sockets[key].username,
+		currentRoom: [...rooms[key]][1] || null,
 	}));
 }
 
-function getUsernameById(id) {
-	return getSockets[id].username;
-}
-
-function getRoomsAndSockets() {
-	// Alla rooms och vilka som är med
-	return Object.fromEntries(io.of("/").adapter.rooms);
-}
-
-function getSocketsAndRooms() {
-	// Alla sockets och vilka rum de är med i
-	return Object.fromEntries(io.of("/").adapter.sids);
-}
-
 io.use((socket, next) => {
-	console.log(`Socket with ID ${socket.id} has connected`);
+	socket.on("message", (data) => {
+		const logEntry = `{ timestamp: ${Date.now()} | author_id: ${
+			socket.id
+		} | room_id: ${data.room_id} | message: ${data.message} }\n`;
+		log.write(logEntry);
+	});
 	next();
 });
 
 io.on("connection", (socket) => {
-	socket.on("ready", async () => {
-		const dbRooms = await roomsModel.getAll();
-
-		socket.emit("initial_data", {
-			users: getFilteredSockets(),
-			rooms: dbRooms,
-		});
-	});
-
-	socket.on("message", (data) => {
-		console.log(`${socket.id} has sent ${data}`);
+	socket.on("message", async (data) => {
+		if (data.message.length === 0)
+			return socket.emit("error_status", { message: true });
 
 		const message = {
-			id: uuidv4(),
-			author: { id: socket.id, username: socket.username },
+			author_id: socket.id,
+			author_username: socket.username,
 			message: data.message,
-			to: data.to,
-			created_at: "2022-06-21 14:00",
+			room_id: data.room_id,
+			created_at: Date.now(),
 		};
 
-		messages.push(message);
-		io.to(data.to).emit("message", message);
+		const id = await messagesModel.add(message);
+		const newMessage = await messagesModel.getById(id);
+		socket.emit("error_status", { message: false });
+		io.to(data.room_id).emit("message", newMessage);
 	});
 
-	socket.on("direct_message", (data) => {
-		socket.to(data.to).emit("message", data.message);
+	socket.on("create_room", async (name) => {
+		const existingRoom = await roomsModel.getByName(name);
+		if (existingRoom.length > 0)
+			return socket.emit("error_status", { create_room: true });
+
+		await roomsModel.add(name);
+		const allRooms = await roomsModel.getAll();
+		socket.emit("error_status", { create_room: false });
+		io.emit("updated_rooms", allRooms);
 	});
 
-	socket.on("create_room", async (room) => {
-		const newRoom = await roomsModel.add(room);
-	});
-
-	socket.on("join_room", (room) => {
+	socket.on("join_room", async (roomId) => {
 		const joinedRooms = Array.from(socket.rooms);
 		const roomToLeave = joinedRooms[1];
 
 		socket.leave(roomToLeave);
-		socket.join(room);
-		console.log(
-			`User with ID: ${socket.id} has joined room with ID: ${room}`
-		);
+		socket.join(roomId);
 
-		socket.emit(
-			"existing_messages",
-			messages.filter((message) => message.to === room)
-		);
+		const existingMessages = await messagesModel.getByRoomId(roomId);
+		socket.emit("existing_messages", existingMessages);
+		io.emit("updated_users", getUsers());
+	});
 
-		if (rooms.findIndex((r) => r.id === room) !== -1) return;
-		rooms.push({ id: room });
-		io.emit("new_room", rooms);
+	socket.on("remove_room", async (roomId) => {
+		await roomsModel.remove(roomId);
+		const allRooms = await roomsModel.getAll();
+		io.emit("updated_rooms", allRooms);
 	});
 
 	socket.on("is_writing", (data) => {
-		socket.broadcast.to(data.to).emit("is_writing", {
+		socket.broadcast.to(data.room_id).emit("is_writing", {
 			isWriting: data.isWriting,
-			user: { id: socket.id, username: socket.username },
+			username: socket.username,
 		});
 	});
 
-	socket.on("set_username", (data) => {
+	socket.on("set_username", async (data) => {
 		socket.username = data;
-		io.emit("updated_users", getFilteredSockets());
+		io.emit("updated_users", getUsers());
+
+		const rooms = await roomsModel.getAll();
+		socket.emit("initial_data", {
+			users: getUsers(),
+			rooms: rooms,
+		});
 	});
 
-	socket.on("disconnect", (reason) => {
-		io.emit("updated_users", getFilteredSockets());
-		console.log(
-			`Socket with ID ${socket.id} has disconnected. Reason: ${reason}`
-		);
+	socket.on("disconnect", () => {
+		io.emit("updated_users", getUsers());
 	});
 });
 

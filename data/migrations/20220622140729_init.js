@@ -4,21 +4,19 @@
  */
 exports.up = async function (knex) {
 	await knex.schema.createTable("messages", (table) => {
-		table.increments("id").primary();
+		table.increments("id");
 		table.string("message").notNullable();
 		table.string("author_id").notNullable();
 		table.string("author_username").notNullable();
-		table
-			.string("room_id")
-			.notNullable()
-			.references("id")
-			.inTable("rooms")
-			.onDelete("CASCADE");
-		table.timestamps(true, true);
+		table.string("room_id").notNullable();
+		table.integer("created_at");
+
+		table.foreign("room_id").references("rooms.id").onDelete("CASCADE");
 	});
 
 	await knex.schema.createTable("rooms", (table) => {
-		table.string("id").notNullable().primary();
+		table.increments("id");
+		table.string("name").notNullable();
 	});
 };
 

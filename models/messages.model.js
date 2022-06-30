@@ -11,7 +11,7 @@ async function getAll() {
 }
 
 async function getById(id) {
-	const result = await db("messages").select().where({ id });
+	const result = await db("messages").first().where({ id });
 	return result;
 }
 

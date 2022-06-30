@@ -20,6 +20,7 @@ function getUsers() {
 		id: sockets[key].id,
 		username: sockets[key].username,
 		currentRoom: [...rooms[key]][1] || null,
+		isWriting: sockets[key].isWriting,
 	}));
 }
 
@@ -82,14 +83,13 @@ io.on("connection", (socket) => {
 	});
 
 	socket.on("is_writing", (data) => {
-		socket.broadcast.to(data.room_id).emit("is_writing", {
-			isWriting: data.isWriting,
-			username: socket.username,
-		});
+		socket.isWriting = data.isWriting;
+		socket.broadcast.to(data.room_id).emit("updated_users", getUsers());
 	});
 
 	socket.on("set_username", async (data) => {
 		socket.username = data;
+		socket.isWriting = false;
 		io.emit("updated_users", getUsers());
 
 		const rooms = await roomsModel.getAll();

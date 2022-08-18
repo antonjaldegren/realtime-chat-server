@@ -1,7 +1,16 @@
 const db = require("../data/db.js");
 
+const messageKeys = [
+	"id",
+	"message",
+	"author_id",
+	"author_username",
+	"room_id",
+	"created_at",
+];
+
 async function add(data) {
-	const result = await db("messages").insert(data);
+	const result = await db("messages").returning(messageKeys).insert(data);
 	return result;
 }
 

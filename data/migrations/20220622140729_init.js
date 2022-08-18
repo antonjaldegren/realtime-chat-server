@@ -3,6 +3,11 @@
  * @returns { Promise<void> }
  */
 exports.up = async function (knex) {
+	await knex.schema.createTable("rooms", (table) => {
+		table.increments("id");
+		table.string("name").notNullable();
+	});
+
 	await knex.schema.createTable("messages", (table) => {
 		table.increments("id");
 		table.string("message").notNullable();
@@ -12,11 +17,6 @@ exports.up = async function (knex) {
 		table.integer("created_at");
 
 		table.foreign("room_id").references("rooms.id").onDelete("CASCADE");
-	});
-
-	await knex.schema.createTable("rooms", (table) => {
-		table.increments("id");
-		table.string("name").notNullable();
 	});
 };
 

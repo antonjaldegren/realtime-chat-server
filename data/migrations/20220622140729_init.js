@@ -10,7 +10,7 @@ exports.up = async function (knex) {
 
 	await knex.schema.createTable("messages", (table) => {
 		table.increments("id");
-		table.string("message").notNullable();
+		table.text("message").notNullable();
 		table.string("author_id").notNullable();
 		table.string("author_username").notNullable();
 		table.integer("room_id").notNullable();

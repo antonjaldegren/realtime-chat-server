@@ -14,7 +14,7 @@ exports.up = async function (knex) {
 		table.string("author_id").notNullable();
 		table.string("author_username").notNullable();
 		table.integer("room_id").notNullable();
-		table.integer("created_at");
+		table.bigint("created_at");
 
 		table.foreign("room_id").references("rooms.id").onDelete("CASCADE");
 	});

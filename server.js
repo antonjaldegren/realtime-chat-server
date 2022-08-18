@@ -48,7 +48,7 @@ io.on("connection", (socket) => {
 			created_at: Date.now(),
 		};
 
-		const newMessage = await messagesModel.add(message);
+		const [newMessage] = await messagesModel.add(message);
 		socket.emit("error_status", { message: false });
 		io.to(data.room_id).emit("message", newMessage);
 	});

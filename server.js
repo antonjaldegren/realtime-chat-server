@@ -5,7 +5,7 @@ const roomsModel = require("./models/rooms.model");
 
 const io = new Server({
 	cors: {
-		origin: "https://antonjaldegren-chat.netlify.app",
+		origin: "*",
 		methods: ["GET", "POST"],
 		credentials: true,
 	},

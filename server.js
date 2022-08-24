@@ -5,7 +5,7 @@ const roomsModel = require("./models/rooms.model");
 
 const io = new Server({
 	cors: {
-		origin: "*",
+		origin: process.env.CLIENT_URLS.split(" "),
 		methods: ["GET", "POST"],
 	},
 });
